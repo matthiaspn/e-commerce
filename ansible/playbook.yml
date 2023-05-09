@@ -34,21 +34,21 @@
         name: mysql
         state: restarted
 
-    - name: Changer le mot de passe de root
-      ansible.builtin.command:
-        cmd: mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'test';"
-        warn: no
+    #- name: Changer le mot de passe de root
+    #  ansible.builtin.command:
+    #    cmd: mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'test';"
+    #    warn: no
 
-    - name: Création d'un utilisateur et d'une base de données MariaDB
-      mysql_user:
-        name: "{{ db_user }}"
-        password: "{{ db_password }}"
-        login_user: root
-        login_password: "test"
-        priv: "{{ db_name }}.*:ALL"
-        state: present
-      notify:
-        - restart mysql
+    #- name: Création d'un utilisateur et d'une base de données MariaDB
+    #  mysql_user:
+    #    name: "{{ db_user }}"
+    #    password: "{{ db_password }}"
+    #    login_user: root
+    #    login_password: "test"
+    #    priv: "{{ db_name }}.*:ALL"
+    #    state: present
+    #  notify:
+    #    - restart mysql
 
     - name: Ajouter le PPA ondrej/php
       apt_repository:
