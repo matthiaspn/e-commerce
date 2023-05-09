@@ -94,29 +94,23 @@
         src: files/archive.zip
         dest: /var/www/e-commerce
 
-    - name: Installation des dépendances de Symfony
-      composer:
-        command: install
-        working_dir: /var/www/e-commerce
-        no_dev: yes
+    - name: Install dependencies
+      shell: "cd /var/www/e-commerce ; composer install"
+      environment:
+        COMPOSER_NO_INTERACTION: "1"
+        COMPOSER_ALLOW_SUPERUSER: "1"
 
-    - name: Configuration de l'application Symfony
-      template:
-        src: templates/parameters.yml.j2
-        dest: /var/www/e-commerce/app/config/parameters.yml
-        owner: www-data
-        group: www-data
-        mode: 0644
+    - name: make migrations
+      shell: "cd /var/www/e-commerce ; php bin/console make:migration"
+      become: false
 
-    - name: Vérification de la configuration de Symfony
-      command: php /var/www/e-commerce/bin/console doctrine:schema:validate --no-interaction
-      ignore_errors: yes
-      register: schema_validate
+    - name: migrate no interaction
+      shell: "cd /var/www/e-commerce ; php bin/console doctrine:migrations:migrate --no-interaction"
+      become: false
 
-    - name: Mise à jour du schéma de la base de données
-      command: php /var/www/e-commerce/bin/console doctrine:schema:update --force --no-interaction
-      when: schema_validate.stderr.find('no matching mapping found') != -1
-      become: yes
+    - name: generate key pair jwt
+      shell: "cd /var/www/e-commerce ; php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction"
+      become: false
 
   handlers:
     - name: restart mysql
