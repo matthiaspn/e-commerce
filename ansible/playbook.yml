@@ -1,0 +1,92 @@
+---
+- name: Installation de MariaDB et Symfony 6
+  hosts: all
+  become: yes
+
+  vars:
+    db_user: my_user
+    db_password: my_password
+    db_name: my_database
+
+  tasks:
+    - name: Installation de MariaDB
+      apt:
+        name: mariadb-server
+        state: present
+
+    - name: Configuration de MariaDB
+      template:
+        src: templates/my.cnf.j2
+        dest: /etc/mysql/my.cnf
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - restart mysql
+
+    - name: Redémarrage de MariaDB
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Création d'un utilisateur et d'une base de données MariaDB
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+      notify:
+        - restart mysql
+
+    - name: Vérification de la présence de la base de données MariaDB
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+      notify:
+        - restart mysql
+
+    - name: Installation de PHP et des extensions nécessaires pour Symfony
+      apt:
+        name: ['php', 'php-cli', 'php-fpm', 'php-mysql', 'php-curl', 'php-gd', 'php-intl', 'php-mbstring', 'php-soap', 'php-xml', 'php-xmlrpc', 'php-zip']
+        state: present
+
+    - name: Installation de Composer
+      apt:
+        name: composer
+        state: present
+
+    - name: Clonage de l'application Symfony 6
+      git:
+        repo: https://github.com/matthiaspn/e-commerce
+        dest: /var/www/e-commerce
+        version: master
+
+    - name: Installation des dépendances de Symfony
+      composer:
+        command: install
+        working_dir: /var/www/e-commerce
+        no_dev: yes
+
+    - name: Configuration de l'application Symfony
+      template:
+        src: templates/parameters.yml.j2
+        dest: /var/www/e-commerce/app/config/parameters.yml
+        owner: www-data
+        group: www-data
+        mode: 0644
+
+    - name: Vérification de la configuration de Symfony
+      command: php /var/www/e-commerce/bin/console doctrine:schema:validate --no-interaction
+      ignore_errors: yes
+      register: schema_validate
+
+    - name: Mise à jour du schéma de la base de données
+      command: php /var/www/e-commerce/bin/console doctrine:schema:update --force --no-interaction
+      when: schema_validate.stderr.find('no matching mapping found') != -1
+      become: yes
+
+  handlers:
+    - name: restart mysql
+      service:
+        name: mysql
+        state: restarted

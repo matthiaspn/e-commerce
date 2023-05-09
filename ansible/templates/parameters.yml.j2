@@ -1,0 +1,11 @@
+parameters:
+    database_host: 127.0.0.1
+    database_port: null
+    database_name: my_database
+    database_user: my_user
+    database_password: my_password
+    mailer_transport: smtp
+    mailer_host: 127.0.0.1
+    mailer_user: null
+    mailer_password: null
+    secret: "{{ lookup('password', '/dev/null length=128 chars=ascii_letters,digits,special') }}"
