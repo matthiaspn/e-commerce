@@ -9,9 +9,14 @@
     db_name: my_database
 
   tasks:
+    - name: Mettre à jour les dépendances
+      become: yes
+      apt:
+        update_cache: yes
+
     - name: Installation de MariaDB
       apt:
-        name: mariadb-server
+        name: ['mariadb-server', 'python3-pymysql']
         state: present
 
     - name: Configuration de MariaDB
@@ -29,37 +34,65 @@
         name: mysql
         state: restarted
 
+    - name: Changer le mot de passe de root
+      ansible.builtin.command:
+        cmd: mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'test';"
+        warn: no
+
     - name: Création d'un utilisateur et d'une base de données MariaDB
       mysql_user:
         name: "{{ db_user }}"
         password: "{{ db_password }}"
+        login_user: root
+        login_password: "test"
         priv: "{{ db_name }}.*:ALL"
         state: present
       notify:
         - restart mysql
 
-    - name: Vérification de la présence de la base de données MariaDB
-      mysql_db:
-        name: "{{ db_name }}"
-        state: present
-      notify:
-        - restart mysql
+    - name: Ajouter le PPA ondrej/php
+      apt_repository:
+        repo: ppa:ondrej/php
+        update_cache: yes
 
-    - name: Installation de PHP et des extensions nécessaires pour Symfony
+    - name: Installer PHP 8.2
       apt:
-        name: ['php', 'php-cli', 'php-fpm', 'php-mysql', 'php-curl', 'php-gd', 'php-intl', 'php-mbstring', 'php-soap', 'php-xml', 'php-xmlrpc', 'php-zip']
+        name: php8.2
         state: present
+        update_cache: yes
+
+    - name: Installer les extensions PHP requises
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      with_items:
+        - php8.2-cli
+        - php8.2-curl
+        - php8.2-gd
+        - php8.2-intl
+        - php8.2-mbstring
+        - php8.2-mysql
+        - php8.2-soap
+        - php8.2-xml
+        - php8.2-zip
 
     - name: Installation de Composer
       apt:
         name: composer
         state: present
 
+    - name: Créer le répertoire e-commerce
+      become: yes
+      file:
+        path: /var/www/e-commerce
+        state: directory
+        mode: '0755'
+
     - name: Clonage de l'application Symfony 6
-      git:
-        repo: https://github.com/matthiaspn/e-commerce
+      unarchive:
+        src: files/archive.zip
         dest: /var/www/e-commerce
-        version: master
 
     - name: Installation des dépendances de Symfony
       composer:
